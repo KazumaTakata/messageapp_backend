@@ -9,9 +9,6 @@ const upload = multer({dest: 'static/img'})
 
 var router = express.Router();  
 
-let chatdata =[ {id: "1", data: [{content: "hello \nfuck you", person: 1},{content:"\nfuck you", person: 0} ] },  
-            {id: "2", data: [{content: "\nfuck you", person: 1},{content:"\nfuck you", person: 0} ] }  ]
-
 router.get("/", function(req, res) {
     res.send("hello")
 })
@@ -29,43 +26,35 @@ router.get("/friendslist", (req, res) => {
             dbo.collection("users").findOne({_id: o_id}, function(err, result) {
                 console.log(result)
                 let friendIds = result["friendIds"]
-                // dbo.collection("users").findOne({_id: o_id}, function(err, result) {
-                //     console.log(result)
-                // })
-
+              
                 dbo.collection("users").find({ "_id": {$in: friendIds}}, {name: 1 }).toArray((err, result) => {
                     console.log(result)
                     let returndata = result.map( doc => { return { name: doc["name"], photourl: doc["photourl"], id: doc._id.toString(), backgroundurl: doc["backgroundurl"]  }  }  )
                     res.json(returndata)
                 })
             })
-        })
-        // res.status(200).send(decoded);    
-    });
-    // res.json([{name: "john", url: "http://localhost:8181/img/tyler-nix-711165-unsplash.jpg", id: "1"}, {name: "one", url: "http://localhost:8181/img/ayo-ogunseinde-710972-unsplash.jpg", id: "2"}])
-})
-
-router.get("/find/:friendId", (req, res) =>{
-    let friendId = req.params.friendId
-
-    jwt.verify( req.headers["x-access-token"] , "mysecret", function(err, decoded) {
-        if (err) return res.status(500).send({ auth: false, message: 'Failed to authenticate token.' });
-        
-        MongoClient.connect(url, function(err, db) {
-            let dbo = db.db("swiftline")
-
-            let f_id = new mongo.ObjectID(friendId)
-
-            dbo.collection("users").findOne({_id: f_id}, (err, result) => {
-                console.log(result)
-                let obj = { name: result["name"], photourl: result["photourl"] }
-                res.json(obj)
-            } )
-
         })  
     });
+  })
 
-} )
+router.get("/find/:friendname", (req, res) =>{
+    let friendname = req.params.friendname
+    jwt.verify( req.headers["x-access-token"] , "mysecret", function(err, decoded) {
+        if (err) return res.status(500).send({ auth: false, message: 'Failed to authenticate token.' });
+        MongoClient.connect(url, function(err, db) {
+            let dbo = db.db("swiftline")
+            dbo.collection("users").findOne({name: friendname}, (err, result) => {
+                if (result == null){
+                    let obj = { }
+                    res.json(obj)
+                } else {
+                    let obj = { name: result["name"], photourl: result["photourl"], id: result['_id'] }
+                    res.json(obj)
+                }
+            })
+        })  
+    });
+ })
 
 router.get("/addfriend/:friendId", (req, res) => {
 
@@ -151,7 +140,7 @@ router.post("/login", (req, res) => {
     let name = req.body.name
     let pass = req.body.password
 
-    let defaultfriendIds = [ new mongo.ObjectID( "5b35d1b317f95911e0fad272" ) ]
+    let defaultfriendIds = [  ]
     let obj = {
         name: name,
         password: pass,
@@ -163,7 +152,6 @@ router.post("/login", (req, res) => {
 
     MongoClient.connect(url, function(err, db) {
         if (err) throw err;
-        console.log("Database created!");
         let dbo = db.db("swiftline")
         dbo.collection("users").findOne({name: name}, function(err, result) {
             console.log(result)
@@ -176,7 +164,7 @@ router.post("/login", (req, res) => {
                       });
 
                     console.log("1 document inserted");
-                    res.json({login: true, token: token })   
+                    res.json({login: true, token: token, id: result.ops[0]._id.toString(), name: result.ops[0].name })   
                     db.close();
                   });
             } else {
@@ -184,7 +172,7 @@ router.post("/login", (req, res) => {
                     let token = jwt.sign({ id: result._id.toString() }, "mysecret", {
                         expiresIn: 86400 // expires in 24 hours
                       });
-                    res.json({login: true, token: token }) 
+                      res.json({login: true, token: token, id: result._id.toString(), name: result.name })  
                 } else {
                     res.json({login: false})
                 }
@@ -216,7 +204,7 @@ router.get("/profile", (req, res) =>{
     })
 } )
 
-router.post("/profile", upload.single("image"), (req, res) =>{
+router.post("/profile/photo", upload.single("image"), (req, res) =>{
     jwt.verify( req.headers["x-access-token"] , "mysecret", function(err, decoded) {
         let myId = new mongo.ObjectID(decoded.id)
         console.log(req.file)
@@ -228,6 +216,28 @@ router.post("/profile", upload.single("image"), (req, res) =>{
                 $set: {"photourl": photourl}
             } )
             res.json({ok: "ok"})
+        })
+    })
+})
+
+router.post("/profile/name", (req, res) =>{
+    jwt.verify( req.headers["x-access-token"] , "mysecret", function(err, decoded) {
+        let myId = new mongo.ObjectID(decoded.id)
+        let newname = req.body.name
+
+        MongoClient.connect(url, function(err, db) {
+            let dbo = db.db("swiftline")
+            dbo.collection("users").findOne({name: newname },(err, result) => {
+
+                if (result == null){
+                    dbo.collection("users").updateOne({_id: myId},{
+                        $set: {"name": newname }
+                    })
+                    res.json({ok: "ok"})
+                }
+            })
+            
+            
         })
     })
 })

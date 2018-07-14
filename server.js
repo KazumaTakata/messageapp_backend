@@ -10,6 +10,13 @@ let socketPool = {}
 
 wss.on('connection', function connection(ws) {
   console.log("connect")
+
+  ws.on("close", function close(){
+    console.log("closed")
+    let key = Object.keys(socketPool).find(key => socketPool[key] === this);
+    delete socketPool[key]
+  })
+
   ws.on('message', function incoming(message) {
 
     let token = JSON.parse(message.toString()).myId
@@ -33,8 +40,14 @@ wss.on('connection', function connection(ws) {
         //     client.send(message)
         // });
         if (socketPool[friendId] != undefined){
-          let payload = {content: content, id: myId}
-          socketPool[friendId].send( JSON.stringify(payload) )
+
+          try{
+            let payload = {content: content, id: myId}
+            socketPool[friendId].send( JSON.stringify(payload) )
+          } catch (e) {
+            console.log(e)
+          }
+
         
         } else {
 
@@ -59,6 +72,7 @@ wss.on('connection', function connection(ws) {
     
     )
   });
-
 //   ws.send('something');
 });
+
+
