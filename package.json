@@ -8,6 +8,7 @@
   },
   "jest": {
     "verbose": true,
+    "testEnvironment": "node",
     "testURL": "http://localhost/"
   },
   "keywords": [],

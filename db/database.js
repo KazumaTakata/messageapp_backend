@@ -10,12 +10,11 @@ let connectToDatabase = new Promise(function(resolve, reject) {
   MongoClient.connect(url, function(err, db) {
     if (err) {
       reject(err);
-      db.close();
     } else {
       let dbo = db.db("swiftline");
       let collection = dbo.collection("users");
+      collection.db = db;
       resolve(collection);
-      db.close();
     }
   });
 });
@@ -25,6 +24,7 @@ function findUserById(id) {
     connectToDatabase.then(conn => {
       conn.findOne({ _id: new mongo.ObjectID(id) }, function(err, result) {
         resolve(result);
+        conn.db.close();
       });
     }, reject);
   });
