@@ -132,38 +132,6 @@ router.get("/storedtalks", (req, res) => {
   });
 });
 
-router.get("/talks/:friendId", (req, res) => {
-  let friendId = req.params.friendId;
-
-  jwt.verify(req.headers["x-access-token"], "mysecret", function(err, decoded) {
-    if (err)
-      return res
-        .status(500)
-        .send({ auth: false, message: "Failed to authenticate token." });
-
-    MongoClient.connect(url, function(err, db) {
-      let dbo = db.db("swiftline");
-
-      let concatId = "";
-      if (decoded["id"] > friendId) {
-        concatId = friendId + decoded["id"];
-      } else {
-        concatId = decoded["id"] + friendId;
-      }
-
-      dbo.collection("talks").findOne({ concatId: concatId }, (err, result) => {
-        console.log(result);
-        if (result == null) {
-          dbo.collection("talks").insertOne({ concatId: concatId, talks: [] });
-          res.json([]);
-        } else {
-          res.json(result.talksd);
-        }
-      });
-    });
-  });
-});
-
 router.post("/login", (req, res) => {
   let name = req.body.name;
   let pass = req.body.password;
