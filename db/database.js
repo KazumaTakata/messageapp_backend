@@ -41,6 +41,13 @@ function updateOneField(id, fieldname, fieldvalue) {
         { _id: new mongo.ObjectID(id) },
         {
           $set: updateData,
+        },
+        (err, result) => {
+          if (err) {
+            reject(err);
+          }
+          resolve(result);
+          conn.db.close();
         }
       );
     });
@@ -54,9 +61,9 @@ function addFriend(myid, friendid) {
       let f_id = new mongo.ObjectID(friendid);
 
       conn.updateOne(
-        { _id: f_id },
+        { _id: o_id },
         {
-          $push: { friendIds: o_id },
+          $push: { friendIds: f_id },
         },
         (err, result) => {
           if (err) {
@@ -83,9 +90,11 @@ function findUserByName(name) {
 function findUsersById(ids) {
   return new Promise((resolve, reject) => {
     connectToDatabase("users").then(conn => {
-      conn.findOne({ _id: { $in: ids } }, function(err, result) {
+      conn.find({ _id: { $in: ids } }).toArray((err, result) => {
+        if (err) {
+          reject(err);
+        }
         resolve(result);
-        conn.db.close();
       });
     }, reject);
   });
@@ -108,10 +117,10 @@ function insertUser(name, password) {
           reject(err);
         }
         console.log("1 document inserted");
-        resolve(result);
+        resolve(result.insertedId.toString());
         conn.db.close();
       });
-    });
+    }, reject);
   });
 }
 
@@ -126,7 +135,7 @@ function destroyAll() {
         resolve(result);
         conn.db.close();
       });
-    });
+    }, reject);
   });
 }
 
@@ -147,9 +156,53 @@ function getStoredTalk(id) {
   });
 }
 
-// findUserById("5b35d1b317f95911e0fad272").then(result => {
-//   console.log(result);
-// }, errHandler);
+function insertTalk(id, chatcontent) {
+  return new Promise((resolve, reject) => {
+    connectToDatabase("users").then(conn => {
+      conn.updateOne(
+        { _id: new mongo.ObjectID(id) },
+        { $push: { talks: chatcontent } },
+        (err, result) => {
+          if (err) {
+            reject(err);
+          }
+          resolve(result);
+        }
+      );
+    });
+  });
+}
+
+function insertFeed(id, feedcontent, photourl) {
+  let insertobj = {
+    id,
+    feedcontent,
+    photourl,
+  };
+  return new Promise((resolve, reject) => {
+    connectToDatabase("feeds").then(conn => {
+      conn.insertOne(insertobj, (err, result) => {
+        if (err) {
+          reject(err);
+        }
+        resolve(result);
+      });
+    }, reject);
+  });
+}
+
+function getFeed(userids) {
+  return new Promise((resolve, reject) => {
+    connectToDatabase("feeds").then(conn => {
+      conn.find({ userId: { $in: userids } }).toArray((err, result) => {
+        if (err) {
+          reject(err);
+        }
+        resolve(result);
+      });
+    }, reject);
+  });
+}
 
 module.exports = {
   findUserById,
@@ -160,4 +213,7 @@ module.exports = {
   addFriend,
   getStoredTalk,
   updateOneField,
+  getFeed,
+  insertFeed,
+  insertTalk,
 };
