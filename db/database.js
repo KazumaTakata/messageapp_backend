@@ -156,12 +156,12 @@ function getStoredTalk(id) {
   });
 }
 
-function insertTalk(id, chatcontent) {
+function insertTalk(senderid, recieverid, chatcontent) {
   return new Promise((resolve, reject) => {
     connectToDatabase("users").then(conn => {
       conn.updateOne(
-        { _id: new mongo.ObjectID(id) },
-        { $push: { talks: chatcontent } },
+        { _id: new mongo.ObjectID(recieverid) },
+        { $push: { talks: { content: chatcontent, friendid: senderid } } },
         (err, result) => {
           if (err) {
             reject(err);

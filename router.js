@@ -7,11 +7,11 @@ var verifyToken = require("./middleware/verifyToken");
 var multer = require("multer");
 const upload = multer({ dest: "static/img" });
 var db = require("./db/database");
+var config = require("./config");
 
 var router = express.Router();
 
-
-router.get("/friendslist", verifyToken, async (req, res) => {
+router.get("/friend", verifyToken, async (req, res) => {
   try {
     let user = await db.findUserById(req.userId);
     let friendIds = user["friendIds"];
@@ -21,12 +21,12 @@ router.get("/friendslist", verifyToken, async (req, res) => {
         name: doc["name"],
         photourl: doc["photourl"],
         id: doc._id.toString(),
-        backgroundurl: doc["backgroundurl"]
+        backgroundurl: doc["backgroundurl"],
       };
     });
-    res.status(200).send(returndata);
-  } catch {
-    res.status(500);
+    res.status(200).send(JSON.stringify(returndata));
+  } catch (err) {
+    res.send(500);
   }
 });
 
@@ -42,76 +42,75 @@ router.get("/friend/:friendname", verifyToken, async (req, res) => {
       let obj = {
         name: result["name"],
         photourl: result["photourl"],
-        id: result["_id"]
+        id: result["_id"],
       };
       res.status(200).send(obj);
     }
   } catch (err) {
     console.log(err);
-    res.status(500);
+    res.send(500);
   }
 });
 
-router.get("/addfriend/:friendId", verifyToken, async (req, res) => {
+router.get("/friend/add/:friendId", verifyToken, async (req, res) => {
   let friendId = req.params.friendId;
 
-  let o_id = new mongo.ObjectID(req.userId);
-  let f_id = new mongo.ObjectID(friendId);
-
   try {
-    await db.updateOneField(f_id, "friendIds", o_id);
-    await db.updateOneField(o_id, "friendIds", f_id);
+    await db.addFriend(req.userId, friendId);
+    await db.addFriend(friendId, req.userId);
     res.send(200);
   } catch (err) {
     res.send(500);
   }
 });
 
-router.get("/storedtalks", verifyToken, async (req, res) => {
+router.get("/user/talks", verifyToken, async (req, res) => {
   let talks = await db.getStoredTalk(req.userId);
   res.send(talks);
 });
 
-router.post("/login", async (req, res) => {
+router.post("/user/talks", verifyToken, async (req, res) => {
+  let content = req.body.content;
+  let friendid = req.body.friendid;
+  try {
+    let result = await db.insertTalk(req.userId, friendid, content);
+    res.send(200);
+  } catch (err) {
+    console.log(err);
+    res.send(500);
+  }
+});
+
+router.post("/login/", async (req, res) => {
   let name = req.body.name;
   let pass = req.body.password;
-
-  let obj = {
-    name: name,
-    password: pass,
-    photourl: "http://localhost:8181/img/defaultprofile.png",
-    friendIds: [],
-    talks: [],
-    backgroundurl: "http://localhost:8181/img/rocco-caruso-722282-unsplash.jpg"
-  };
 
   let someuser = await db.findUserByName(name);
   if (someuser != null) {
     if (someuser.password == pass) {
-      let token = jwt.sign({ id: result._id.toString() }, "mysecret", {
-        expiresIn: 86400 // expires in 24 hours
+      let token = jwt.sign({ id: someuser._id.toString() }, config.secret, {
+        expiresIn: 86400, // expires in 24 hours
       });
       res.status(200).json({
         login: true,
         token: token,
         id: someuser._id.toString(),
-        name: someuser.name
+        name: someuser.name,
       });
     } else {
       res.status(400).send({ login: false });
     }
   } else {
-    let newuserid = await db.insertUser(obj);
-
-    let token = jwt.sign({ id: result.insertedId.toString() }, "mysecret", {
-      expiresIn: 86400 // expires in 24 hours
+    let newuserid = await db.insertUser(name, pass);
+    let token = jwt.sign({ id: newuserid }, config.secret, {
+      expiresIn: 86400, // expires in 24 hours
     });
 
     res.status(200).send({
       login: true,
       token: token,
       id: newuserid,
-      name: name
+      name: name,
     });
   }
 });
@@ -119,30 +118,27 @@ router.post("/login", async (req, res) => {
 router.get("/profile", verifyToken, async (req, res) => {
   let myId = new mongo.ObjectID(decoded.id);
 
-  MongoClient.connect(
-    url,
-    function(err, db) {
-      let dbo = db.db("swiftline");
+  MongoClient.connect(url, function(err, db) {
+    let dbo = db.db("swiftline");
 
-      dbo
-        .collection("users")
-        .find({ _id: myId })
-        .toArray((err, result) => {
-          let sendobj = { name: result[0].name, photourl: result[0].photourl };
-          res.json(sendobj);
-        });
-    }
-  );
+    dbo
+      .collection("users")
+      .find({ _id: myId })
+      .toArray((err, result) => {
+        let sendobj = { name: result[0].name, photourl: result[0].photourl };
+        res.json(sendobj);
+      });
+  });
 });
 
 router.post(
   "/profile/photo",
   upload.single("image"),
   verifyToken,
-  (req, res) => {
+  async (req, res) => {
     let photourl = `http://localhost:8181/img/${req.file.filename}`;
     try {
-       await db.updateOneField(req.userId, "photourl", photourl);
+      await db.updateOneField(req.userId, "photourl", photourl);
       res.send(200);
     } catch (err) {
       res.send(500);
@@ -151,15 +147,14 @@ router.post(
 );
 router.post("/profile/name", verifyToken, async (req, res) => {
   let newname = req.body.name;
-  let result = await db.findUserByName(newname)
+  let result = await db.findUserByName(newname);
   if (result == null) {
-      let udpateresult = await db.updateOneField(req.userId, "name", newuserid )
-      res.send(200);
-    }else {
-      res.send(400);
-    }
+    let udpateresult = await db.updateOneField(req.userId, "name", newuserid);
+    res.send(200);
+  } else {
+    res.send(400);
+  }
 });
-
 
 router.post("/feed", upload.single("image"), verifyToken, async (req, res) => {
   let photourl = "";
