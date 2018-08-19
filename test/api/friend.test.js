@@ -1,7 +1,8 @@
 const axios = require("axios");
 let functions = require("../../db/database");
 var mongo = require("mongodb");
-const home_url = "http://localhost:8181";
+const config = require("../../config/index");
+const home_url = `http://localhost:${config.server_port}`;
 
 const user1 = { name: "sample_user1", pass: "sample_password1" };
 const user2 = { name: "sample_user2", pass: "sample_password2" };
@@ -25,7 +26,7 @@ afterEach(async () => {
 });
 
 async function dummylogin() {
-  const loginurl = home_url + "/api/login/";
+  const loginurl = home_url + "/api/user/login/";
   let result = await axios.post(loginurl, {
     name: user3.name,
     password: user3.pass,
@@ -33,41 +34,45 @@ async function dummylogin() {
   return result;
 }
 
+async function becomeFriend(api_url, token) {
+  const addfriendurl = api_url + userid1;
+
+  _ = await axios({
+    method: "get",
+    url: addfriendurl,
+    headers: { "x-access-token": token },
+  });
+
+  const addfriendurl2 = api_url + userid2;
+
+  _ = await axios({
+    method: "get",
+    url: addfriendurl2,
+    headers: { "x-access-token": token },
+  });
+}
+
 test("test add friend", async () => {
   jest.setTimeout(300000);
-  try {
-    let result = await dummylogin();
-    let user3id = result.data.id;
-    let token = result.data.token;
 
-    const addfriendurl = home_url + "/api/friend/add/" + userid1;
+  const add_friend_url = home_url + "/api/friend/add/";
 
-    let addfriendresult = await axios({
-      method: "get",
-      url: addfriendurl,
-      headers: { "x-access-token": token },
-    });
+  let result = await dummylogin();
+  let user3id = result.data.id;
+  let token = result.data.token;
 
-    const addfriendurl2 = home_url + "/api/friend/add/" + userid2;
+  await becomeFriend(add_friend_url, token);
 
-    let addfriendresult2 = await axios({
-      method: "get",
-      url: addfriendurl2,
-      headers: { "x-access-token": token },
-    });
+  let retrieveuser3 = await functions.findUserById(user3id);
 
-    let retrieveuser3 = await functions.findUserById(user3id);
+  expect(retrieveuser3.friendIds[0].toString()).toEqual(userid1);
+  expect(retrieveuser3.friendIds[1].toString()).toEqual(userid2);
+  expect(retrieveuser3.friendIds.length).toEqual(2);
 
-    expect(retrieveuser3.friendIds[0].toString()).toEqual(userid1);
-    expect(retrieveuser3.friendIds[1].toString()).toEqual(userid2);
-    expect(retrieveuser3.friendIds.length).toEqual(2);
+  let retrieveuser1 = await functions.findUserById(userid1);
 
-    let retrieveuser1 = await functions.findUserById(userid1);
-
-    expect(retrieveuser1.friendIds[0].toString()).toEqual(user3id);
-    expect().toEqual(userid2);
-    expect(retrieveuser1.friendIds.length).toEqual(1);
-  } catch (err) {}
+  expect(retrieveuser1.friendIds[0].toString()).toEqual(user3id);
+  expect(retrieveuser1.friendIds.length).toEqual(1);
 });
 
 test("test get friend list", async () => {
@@ -76,21 +81,9 @@ test("test get friend list", async () => {
   let user3id = result.data.id;
   let token = result.data.token;
 
-  const addfriendurl = home_url + "/api/friend/add/" + userid1;
+  const add_friend_url = home_url + "/api/friend/add/";
 
-  let addfriendresult = await axios({
-    method: "get",
-    url: addfriendurl,
-    headers: { "x-access-token": token },
-  });
-
-  const addfriendurl2 = home_url + "/api/friend/add/" + userid2;
-
-  let addfriendresult2 = await axios({
-    method: "get",
-    url: addfriendurl2,
-    headers: { "x-access-token": token },
-  });
+  await becomeFriend(add_friend_url, token);
 
   let friendurl = home_url + "/api/friend";
 
@@ -129,23 +122,19 @@ test("insert talk", async () => {
 
   const addfriendurl = home_url + "/api/user/talks";
 
-  try {
-    let addtalkresult = await axios({
-      method: "post",
-      url: addfriendurl,
-      data: { content: "sample_talk", friendid: userid1 },
-      headers: { "x-access-token": token },
-    });
+  let addtalkresult = await axios({
+    method: "post",
+    url: addfriendurl,
+    data: { content: "sample_talk", friendid: userid1 },
+    headers: { "x-access-token": token },
+  });
 
-    let retrieveuser1 = await functions.findUserById(userid1);
-    expect(retrieveuser1.talks[0].content).toEqual("sample_talk");
-    expect(retrieveuser1.talks.length).toEqual(1);
-  } catch (err) {
-    console.log(err);
-  }
+  let retrieveuser1 = await functions.findUserById(userid1);
+  expect(retrieveuser1.talks[0].content).toEqual("sample_talk");
+  expect(retrieveuser1.talks.length).toEqual(1);
 });
 
-test("get talk", async () => {
+test("get stored talk", async () => {
   jest.setTimeout(300000);
   let result = await dummylogin();
   let user3id = result.data.id;
@@ -153,19 +142,17 @@ test("get talk", async () => {
 
   const url = home_url + "/api/user/talks";
 
-  try {
-    await functions.insertTalk(userid1, user3id, "sample_talk");
+  await functions.insertTalk(userid1, user3id, "sample_talk");
+  await functions.insertTalk(userid1, user3id, "sample_talk2");
 
-    let gettalkresult = await axios({
-      method: "get",
-      url: url,
-      headers: { "x-access-token": token },
-    });
+  let gettalkresult = await axios({
+    method: "get",
+    url: url,
+    headers: { "x-access-token": token },
+  });
 
-    expect(gettalkresult[0].content).toEqual("sample_talk");
-    expect(gettalkresult[0].friendid).toEqual(userid1);
-    expect(gettalkresult[0].friendid).toEqual();
-  } catch (err) {
-    console.log(err);
-  }
+  expect(gettalkresult.data[0].content).toEqual("sample_talk");
+  expect(gettalkresult.data[1].content).toEqual("sample_talk2");
+  expect(gettalkresult.data[0].friendid).toEqual(userid1);
+  expect(gettalkresult.data[1].friendid).toEqual(userid1);
 });

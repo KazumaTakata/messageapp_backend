@@ -1,7 +1,9 @@
 const axios = require("axios");
 let functions = require("../../db/database");
 var mongo = require("mongodb");
-const home_url = "http://localhost:8181";
+const config = require("../../config/index");
+const home_url = `http://localhost:${config.server_port}`;
+const login_url = "/api/user/login";
 
 const user1 = { name: "sample_user1", pass: "sample_password1" };
 const user2 = { name: "sample_user2", pass: "sample_password2" };
@@ -22,7 +24,7 @@ afterEach(async () => {
 });
 
 test("signup new user test", async () => {
-  const url = home_url + "/api/login/";
+  const url = home_url + login_url;
   let result = await axios.post(url, {
     name: user3.name,
     password: user3.pass,
@@ -35,7 +37,7 @@ test("signup new user test", async () => {
 });
 
 test("login success", async () => {
-  const url = home_url + "/api/login/";
+  const url = home_url + login_url;
 
   try {
     let result = await axios.post(url, {
@@ -53,13 +55,15 @@ test("login success", async () => {
 });
 
 test("login failed", async () => {
-  const url = home_url + "/api/login/";
+  const url = home_url + login_url;
 
   try {
     let result = await axios.post(url, {
       name: user2.name,
       password: "dummy",
     });
+    expect("dummy").toEqual("dummy2");
+    console.log(result);
   } catch (err) {
     expect(err.response.status).toEqual(400);
     expect(err.response.data.login).toEqual(false);

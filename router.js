@@ -81,7 +81,7 @@ router.post("/user/talks", verifyToken, async (req, res) => {
   }
 });
 
-router.post("/login/", async (req, res) => {
+router.post("/user/login/", async (req, res) => {
   let name = req.body.name;
   let pass = req.body.password;
 
@@ -115,24 +115,19 @@ router.post("/login/", async (req, res) => {
   }
 });
 
-router.get("/profile", verifyToken, async (req, res) => {
+router.get("user/profile", verifyToken, async (req, res) => {
   let myId = new mongo.ObjectID(decoded.id);
-
-  MongoClient.connect(url, function(err, db) {
-    let dbo = db.db("swiftline");
-
-    dbo
-      .collection("users")
-      .find({ _id: myId })
-      .toArray((err, result) => {
-        let sendobj = { name: result[0].name, photourl: result[0].photourl };
-        res.json(sendobj);
-      });
-  });
+  try {
+    let user = await db.findUserById(myId);
+    let sendobj = { name: user.name, photourl: user.photourl };
+    res.status(200).send(sendobj);
+  } catch (err) {
+    res.send(400);
+  }
 });
 
 router.post(
-  "/profile/photo",
+  "user/profile/photo",
   upload.single("image"),
   verifyToken,
   async (req, res) => {
@@ -145,7 +140,7 @@ router.post(
     }
   }
 );
-router.post("/profile/name", verifyToken, async (req, res) => {
+router.post("user/profile/name", verifyToken, async (req, res) => {
   let newname = req.body.name;
   let result = await db.findUserByName(newname);
   if (result == null) {
@@ -156,29 +151,33 @@ router.post("/profile/name", verifyToken, async (req, res) => {
   }
 });
 
-router.post("/feed", upload.single("image"), verifyToken, async (req, res) => {
-  let photourl = "";
-  if (req.file != undefined) {
-    photourl = `http://localhost:8181/img/${req.file.filename}`;
+router.post(
+  "user/feed",
+  upload.single("image"),
+  verifyToken,
+  async (req, res) => {
+    let photourl = "";
+    if (req.file != undefined) {
+      photourl = `http://localhost:8181/img/${req.file.filename}`;
+    }
+    try {
+      let result = await db.insertFeed(
+        req.userId,
+        req.body.feedcontent,
+        photourl
+      );
+      res.send(200);
+    } catch (err) {
+      res.send(500);
+    }
   }
-  try {
-    let result = await db.insertFeed(
-      req.userId,
-      req.body.feedcontent,
-      photourl
-    );
-    res.send(200);
-  } catch (err) {
-    res.send(500);
-  }
-});
+);
 
-router.get("/feed", verifyToken, async (req, res) => {
+router.get("user/feed", verifyToken, async (req, res) => {
   try {
     let user = await db.findUserById(req.userId);
     let rawfriendsIds = user.friendIds.map(id => id.toString());
     let feeds = await db.getFeed(rawfriendsIds);
-
     res.send(feeds);
   } catch (err) {
     res.send(500);

@@ -25,6 +25,9 @@ function findUserById(id) {
   return new Promise((resolve, reject) => {
     connectToDatabase("users").then(conn => {
       conn.findOne({ _id: new mongo.ObjectID(id) }, function(err, result) {
+        if (err) {
+          reject(err);
+        }
         resolve(result);
         conn.db.close();
       });
