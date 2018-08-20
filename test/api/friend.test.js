@@ -2,8 +2,9 @@ const axios = require("axios");
 let functions = require("../../db/database");
 var mongo = require("mongodb");
 const config = require("../../config/index");
+let FormData = require("form-data");
 const home_url = `http://localhost:${config.server_port}`;
-
+const fs = require("fs");
 const user1 = { name: "sample_user1", pass: "sample_password1" };
 const user2 = { name: "sample_user2", pass: "sample_password2" };
 const user3 = { name: "sample_user3", pass: "sample_password3" };
@@ -155,4 +156,94 @@ test("get stored talk", async () => {
   expect(gettalkresult.data[1].content).toEqual("sample_talk2");
   expect(gettalkresult.data[0].friendid).toEqual(userid1);
   expect(gettalkresult.data[1].friendid).toEqual(userid1);
+});
+
+test("get stored talk", async () => {
+  jest.setTimeout(300000);
+  let result = await dummylogin();
+  let user3id = result.data.id;
+  let token = result.data.token;
+
+  const url = home_url + "/api/user/profile";
+
+  let profileresult = await axios({
+    method: "get",
+    url: url,
+    headers: { "x-access-token": token },
+  });
+
+  expect(profileresult.data.name).toEqual(user3.name);
+  expect(profileresult.data.photourl).toEqual(
+    "http://localhost:8181/img/defaultprofile.png"
+  );
+});
+
+test("update name", async () => {
+  jest.setTimeout(300000);
+  let result = await dummylogin();
+  let user3id = result.data.id;
+  let token = result.data.token;
+
+  const url = home_url + "/api/user/profile/name";
+
+  _ = await axios({
+    method: "post",
+    url: url,
+    headers: { "x-access-token": token },
+    data: {
+      name: "new_name",
+    },
+  });
+
+  const get_url = home_url + "/api/user/profile";
+
+  let profileresult = await axios({
+    method: "get",
+    url: get_url,
+    headers: { "x-access-token": token },
+  });
+
+  expect(profileresult.data.name).toEqual("new_name");
+});
+
+test("update photo", async () => {
+  jest.setTimeout(300000);
+  let result = await dummylogin();
+  let user3id = result.data.id;
+  let token = result.data.token;
+
+  const url = home_url + "/api/user/profile/photo";
+
+  let img = fs.createReadStream(
+    "/Users/kazumatakata/Documents/Web_projects/messageapp_backend/test/steve-roe-784898-unsplash.jpg"
+  );
+
+  let bodyFormData = new FormData();
+
+  bodyFormData.append("image", img, {
+    filename: "sample.jpg",
+    contentType: "image/jpg",
+  });
+
+  let postreturn = await axios({
+    method: "post",
+    url: url,
+    headers: Object.assign({}, bodyFormData.getHeaders(), {
+      "Content-Type": "multipart/form-data",
+      "x-access-token": token,
+    }),
+    data: bodyFormData,
+  });
+
+  const get_url = home_url + "/api/user/profile";
+
+  let profileresult = await axios({
+    method: "get",
+    url: get_url,
+    headers: { "x-access-token": token },
+  });
+
+  expect(postreturn.photourl).toEqual(profileresult.photourl);
+
+  // expect(profileresult.data.name).toEqual("new_name");
 });
