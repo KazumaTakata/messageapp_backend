@@ -2,6 +2,7 @@ var express = require("express");
 var app = express();
 var bodyParser = require("body-parser");
 var router = require("./router");
+var cors = require("cors");
 const config = require("./config/index");
 
 app.use(
@@ -13,6 +14,7 @@ app.use(
 );
 app.use(bodyParser.json({ limit: "50mb", extended: true }));
 app.use(express.static("static"));
+app.use(cors());
 
 var port = process.env.PORT || config.server_port;
 

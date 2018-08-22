@@ -59,22 +59,29 @@ function updateOneField(id, fieldname, fieldvalue) {
 
 function addFriend(myid, friendid) {
   return new Promise((resolve, reject) => {
-    connectToDatabase("users").then(conn => {
+    connectToDatabase("users").then(async conn => {
       var o_id = new mongo.ObjectID(myid);
       let f_id = new mongo.ObjectID(friendid);
 
-      conn.updateOne(
-        { _id: o_id },
-        {
-          $push: { friendIds: f_id },
-        },
-        (err, result) => {
-          if (err) {
-            reject(err);
+      let user = await findUserById(myid);
+      let friendids = user.friendIds.map(id => id.toHexString());
+
+      if (friendids.indexOf(f_id.toHexString()) > -1) {
+        resolve();
+      } else {
+        conn.updateOne(
+          { _id: o_id },
+          {
+            $push: { friendIds: f_id },
+          },
+          (err, result) => {
+            if (err) {
+              reject(err);
+            }
+            resolve(result);
           }
-          resolve(result);
-        }
-      );
+        );
+      }
     }, reject);
   });
 }
@@ -107,9 +114,10 @@ function insertUser(name, password) {
   let obj = {
     name: name,
     password: password,
-    photourl: "http://localhost:8181/img/defaultprofile.png",
+    photourl: "http://localhost:8181/img/defaultprofile.jpg",
     friendIds: [],
     talks: [],
+    talksall: [],
     backgroundurl: "http://localhost:8181/img/rocco-caruso-722282-unsplash.jpg",
   };
 
@@ -176,6 +184,43 @@ function insertTalk(senderid, recieverid, chatcontent) {
   });
 }
 
+function insertTalkAll(userid1, userid2, chatcontent, which) {
+  return new Promise((resolve, reject) => {
+    connectToDatabase("users").then(conn => {
+      conn.updateOne(
+        { _id: new mongo.ObjectID(userid2) },
+        {
+          $push: {
+            talksall: { content: chatcontent, friendid: userid1, which: which },
+          },
+        },
+        (err, result) => {
+          if (err) {
+            reject(err);
+          }
+          resolve(result);
+        }
+      );
+    });
+  });
+}
+
+function getfriendTalk(senderid, friendid) {
+  return new Promise((resolve, reject) => {
+    connectToDatabase("users").then(conn => {
+      conn.findOne({ _id: new mongo.ObjectID(senderid) }, (err, result) => {
+        if (err) {
+          reject(err);
+        }
+        let specifictalks = result.talksall.filter(
+          talk => talk.friendid == friendid
+        );
+        resolve(specifictalks);
+      });
+    });
+  });
+}
+
 function insertFeed(id, feedcontent, photourl) {
   let insertobj = {
     id,
@@ -219,4 +264,6 @@ module.exports = {
   getFeed,
   insertFeed,
   insertTalk,
+  insertTalkAll,
+  getfriendTalk,
 };

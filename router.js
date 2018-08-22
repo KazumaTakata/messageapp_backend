@@ -56,9 +56,13 @@ router.get("/friend/add/:friendId", verifyToken, async (req, res) => {
   let friendId = req.params.friendId;
 
   try {
-    await db.addFriend(req.userId, friendId);
-    await db.addFriend(friendId, req.userId);
-    res.send(200);
+    let user = await db.addFriend(req.userId, friendId);
+    let user2 = await db.addFriend(friendId, req.userId);
+    if (user != null) {
+      res.send(200);
+    } else {
+      res.send(400);
+    }
   } catch (err) {
     res.send(500);
   }
@@ -66,6 +70,12 @@ router.get("/friend/add/:friendId", verifyToken, async (req, res) => {
 
 router.get("/user/talks", verifyToken, async (req, res) => {
   let talks = await db.getStoredTalk(req.userId);
+  res.send(talks);
+});
+
+router.get("/user/talks/:friendId", verifyToken, async (req, res) => {
+  let friendId = req.params.friendId;
+  let talks = await db.getfriendTalk(req.userId, friendId);
   res.send(talks);
 });
 
@@ -115,10 +125,9 @@ router.post("/user/login/", async (req, res) => {
   }
 });
 
-router.get("user/profile", verifyToken, async (req, res) => {
-  let myId = new mongo.ObjectID(decoded.id);
+router.get("/user/profile", verifyToken, async (req, res) => {
   try {
-    let user = await db.findUserById(myId);
+    let user = await db.findUserById(req.userId);
     let sendobj = { name: user.name, photourl: user.photourl };
     res.status(200).send(sendobj);
   } catch (err) {
@@ -127,24 +136,25 @@ router.get("user/profile", verifyToken, async (req, res) => {
 });
 
 router.post(
-  "user/profile/photo",
+  "/user/profile/photo",
   upload.single("image"),
   verifyToken,
   async (req, res) => {
     let photourl = `http://localhost:8181/img/${req.file.filename}`;
     try {
       await db.updateOneField(req.userId, "photourl", photourl);
-      res.send(200);
+      res.send({ photourl });
     } catch (err) {
       res.send(500);
     }
   }
 );
-router.post("user/profile/name", verifyToken, async (req, res) => {
+
+router.post("/user/profile/name", verifyToken, async (req, res) => {
   let newname = req.body.name;
   let result = await db.findUserByName(newname);
   if (result == null) {
-    let udpateresult = await db.updateOneField(req.userId, "name", newuserid);
+    let udpateresult = await db.updateOneField(req.userId, "name", newname);
     res.send(200);
   } else {
     res.send(400);
@@ -152,7 +162,7 @@ router.post("user/profile/name", verifyToken, async (req, res) => {
 });
 
 router.post(
-  "user/feed",
+  "/user/feed",
   upload.single("image"),
   verifyToken,
   async (req, res) => {
@@ -173,7 +183,7 @@ router.post(
   }
 );
 
-router.get("user/feed", verifyToken, async (req, res) => {
+router.get("/user/feed", verifyToken, async (req, res) => {
   try {
     let user = await db.findUserById(req.userId);
     let rawfriendsIds = user.friendIds.map(id => id.toString());
