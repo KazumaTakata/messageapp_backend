@@ -18,6 +18,7 @@ wss.on("connection", function connection(ws) {
   });
 
   ws.on("message", function incoming(message) {
+    console.log(message);
     let token = JSON.parse(message.toString()).myId;
     let friendId = JSON.parse(message.toString()).friendId;
     let content = JSON.parse(message.toString()).content;

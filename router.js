@@ -94,34 +94,46 @@ router.post("/user/talks", verifyToken, async (req, res) => {
 router.post("/user/login/", async (req, res) => {
   let name = req.body.name;
   let pass = req.body.password;
+  let loginorsignup = req.body.loginorsignup;
 
-  let someuser = await db.findUserByName(name);
-  if (someuser != null) {
-    if (someuser.password == pass) {
-      let token = jwt.sign({ id: someuser._id.toString() }, config.secret, {
+  if (loginorsignup == "signup") {
+    let someuser = await db.findUserByName(name);
+    if (someuser == null) {
+      let newuserid = await db.insertUser(name, pass);
+      let token = jwt.sign({ id: newuserid }, config.secret, {
         expiresIn: 86400, // expires in 24 hours
       });
-      res.status(200).json({
+
+      res.status(200).send({
         login: true,
         token: token,
-        id: someuser._id.toString(),
-        name: someuser.name,
+        id: newuserid,
+        name: name,
+        photourl: "http://localhost:8181/img/defaultprofile.jpg",
       });
+    } else {
+      res.send(400);
+    }
+  } else {
+    let someuser = await db.findUserByName(name);
+    if (someuser != null) {
+      if (someuser.password == pass) {
+        let token = jwt.sign({ id: someuser._id.toString() }, config.secret, {
+          expiresIn: 86400, // expires in 24 hours
+        });
+        res.status(200).json({
+          login: true,
+          token: token,
+          id: someuser._id.toString(),
+          name: someuser.name,
+          photourl: someuser.photourl,
+        });
+      } else {
+        res.status(400).send({ login: false });
+      }
     } else {
       res.status(400).send({ login: false });
     }
-  } else {
-    let newuserid = await db.insertUser(name, pass);
-    let token = jwt.sign({ id: newuserid }, config.secret, {
-      expiresIn: 86400, // expires in 24 hours
-    });
-
-    res.status(200).send({
-      login: true,
-      token: token,
-      id: newuserid,
-      name: name,
-    });
   }
 });
 
@@ -187,6 +199,7 @@ router.get("/user/feed", verifyToken, async (req, res) => {
   try {
     let user = await db.findUserById(req.userId);
     let rawfriendsIds = user.friendIds.map(id => id.toString());
+    rawfriendsIds.push(req.userId);
     let feeds = await db.getFeed(rawfriendsIds);
     res.send(feeds);
   } catch (err) {

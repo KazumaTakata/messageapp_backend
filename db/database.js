@@ -221,9 +221,9 @@ function getfriendTalk(senderid, friendid) {
   });
 }
 
-function insertFeed(id, feedcontent, photourl) {
+function insertFeed(userId, feedcontent, photourl) {
   let insertobj = {
-    id,
+    userId,
     feedcontent,
     photourl,
   };
