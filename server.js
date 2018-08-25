@@ -22,6 +22,7 @@ wss.on("connection", function connection(ws) {
     let token = JSON.parse(message.toString()).myId;
     let friendId = JSON.parse(message.toString()).friendId;
     let content = JSON.parse(message.toString()).content;
+    let time = JSON.parse(message.toString()).time;
 
     let ping = JSON.parse(message.toString()).ping;
 
@@ -38,16 +39,20 @@ wss.on("connection", function connection(ws) {
         // });
         if (socketPool[friendId] != undefined) {
           try {
-            let payload = { content: content, id: myId };
+            let payload = {
+              content: content,
+              id: myId,
+              time: time,
+            };
             socketPool[friendId].send(JSON.stringify(payload));
           } catch (e) {
             console.log(e);
           }
         } else {
-          await database.insertTalk(myId, friendId, content);
+          await database.insertTalk(myId, friendId, content, time);
         }
-        await database.insertTalkAll(myId, friendId, content, 1);
-        await database.insertTalkAll(friendId, myId, content, 0);
+        await database.insertTalkAll(myId, friendId, content, time, 1);
+        await database.insertTalkAll(friendId, myId, content, time, 0);
       }
     });
   });
