@@ -4,6 +4,7 @@ var MongoClient = require("mongodb").MongoClient;
 var mongo = require("mongodb");
 let database = require("./db/database");
 var config = require("./config");
+var elastic = require("./elasticsearch/index");
 
 const wss = new WebSocket.Server({ port: 8084 });
 let socketPool = {};
@@ -53,6 +54,23 @@ wss.on("connection", function connection(ws) {
         }
         await database.insertTalkAll(myId, friendId, content, time, 1);
         await database.insertTalkAll(friendId, myId, content, time, 0);
+
+        let insertobj = {
+          userid: myId,
+          friendid: friendId,
+          content: content,
+          time: time,
+          which: true,
+        };
+        await elastic.addDocument(insertobj);
+        let insertobj2 = {
+          userid: friendId,
+          friendid: myId,
+          content: content,
+          time: time,
+          which: false,
+        };
+        await elastic.addDocument(insertobj2);
       }
     });
   });

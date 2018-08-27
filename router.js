@@ -8,7 +8,7 @@ var multer = require("multer");
 const upload = multer({ dest: "static/img" });
 var db = require("./db/database");
 var config = require("./config");
-
+var elastic = require("./elasticsearch/index");
 var router = express.Router();
 
 router.get("/friend", verifyToken, async (req, res) => {
@@ -206,5 +206,24 @@ router.get("/user/feed", verifyToken, async (req, res) => {
     res.send(500);
   }
 });
+
+router.get(
+  "/elastic/talk/:friendid/:content",
+  verifyToken,
+  async (req, res) => {
+    let friendId = req.params.friendid;
+    let content = req.params.content;
+    try {
+      let result = await elastic.search(req.userId, friendId, content);
+      console.log(result.hits.hits);
+      let sendobj = result.hits.hits.map(result => {
+        return result._source;
+      });
+      res.status(200).send(sendobj);
+    } catch (err) {
+      res.send(500);
+    }
+  }
+);
 
 module.exports = router;
