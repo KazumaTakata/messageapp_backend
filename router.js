@@ -164,12 +164,27 @@ router.post(
 
 router.post(
   "/video",
-  upload.single("video"),
+  upload.array("video", 2),
+  verifyToken,
   async (req, res) => {
-    let videourl = `http://localhost:8181/img/${req.file.filename}`;
+    let video_local = "";
+    let video_remote = "";
+    let videourl = req.files.map(f => {
+      if (f.originalname == "local") {
+        video_local = `http://localhost:8181/img/${f.filename}`;
+      } else {
+        video_remote = `http://localhost:8181/img/${f.filename}`;
+      }
+    });
     try {
-      // await db.updateOneField(req.userId, "photourl", photourl);
-      res.send({ videourl });
+      await db.insertVideo(
+        req.userId,
+        req.body.friendid,
+        video_local,
+        video_remote,
+        req.body.time
+      );
+      res.send(200);
     } catch (err) {
       res.send(500);
     }
@@ -239,8 +254,5 @@ router.get(
     }
   }
 );
-
-
-
 
 module.exports = router;

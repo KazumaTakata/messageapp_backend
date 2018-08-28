@@ -118,6 +118,7 @@ function insertUser(name, password) {
     friendIds: [],
     talks: [],
     talksall: [],
+    videos: [],
     backgroundurl: "http://localhost:8181/img/rocco-caruso-722282-unsplash.jpg",
   };
 
@@ -163,6 +164,27 @@ function getStoredTalk(id) {
           { $set: { talks: [] } }
         );
       });
+    });
+  });
+}
+
+function insertVideo(myid, friendid, video_local, video_remote, time) {
+  return new Promise((resolve, reject) => {
+    connectToDatabase("users").then(conn => {
+      conn.updateOne(
+        { _id: new mongo.ObjectID(myid) },
+        {
+          $push: {
+            videos: { friendid, video_local, video_remote, time },
+          },
+        },
+        (err, result) => {
+          if (err) {
+            reject(err);
+          }
+          resolve(result);
+        }
+      );
     });
   });
 }
@@ -275,4 +297,5 @@ module.exports = {
   insertTalk,
   insertTalkAll,
   getfriendTalk,
+  insertVideo,
 };
