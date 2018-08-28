@@ -162,6 +162,20 @@ router.post(
   }
 );
 
+router.post(
+  "/video",
+  upload.single("video"),
+  async (req, res) => {
+    let videourl = `http://localhost:8181/img/${req.file.filename}`;
+    try {
+      // await db.updateOneField(req.userId, "photourl", photourl);
+      res.send({ videourl });
+    } catch (err) {
+      res.send(500);
+    }
+  }
+);
+
 router.post("/user/profile/name", verifyToken, async (req, res) => {
   let newname = req.body.name;
   let result = await db.findUserByName(newname);
@@ -225,5 +239,8 @@ router.get(
     }
   }
 );
+
+
+
 
 module.exports = router;
