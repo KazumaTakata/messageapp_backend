@@ -168,14 +168,27 @@ function getStoredTalk(id) {
   });
 }
 
-function insertVideo(myid, friendid, video_local, video_remote, time) {
+function insertVideo(
+  myid,
+  friendid,
+  video_local,
+  video_remote,
+  time,
+  textcontent
+) {
   return new Promise((resolve, reject) => {
     connectToDatabase("users").then(conn => {
       conn.updateOne(
         { _id: new mongo.ObjectID(myid) },
         {
           $push: {
-            videos: { friendid, video_local, video_remote, time },
+            videos: {
+              friendid,
+              video_local,
+              video_remote,
+              time,
+              textcontent,
+            },
           },
         },
         (err, result) => {
@@ -185,6 +198,26 @@ function insertVideo(myid, friendid, video_local, video_remote, time) {
           resolve(result);
         }
       );
+    });
+  });
+}
+
+function getfriendVideo(senderid, friendid) {
+  return new Promise((resolve, reject) => {
+    connectToDatabase("users").then(conn => {
+      conn.findOne({ _id: new mongo.ObjectID(senderid) }, (err, result) => {
+        if (err) {
+          reject(err);
+        }
+        try {
+          let specificvideo = result.videos.filter(
+            video => video.friendid == friendid
+          );
+          resolve(specificvideo);
+        } catch (err) {
+          reject(err);
+        }
+      });
     });
   });
 }
@@ -298,4 +331,5 @@ module.exports = {
   insertTalkAll,
   getfriendTalk,
   insertVideo,
+  getfriendVideo,
 };

@@ -182,7 +182,8 @@ router.post(
         req.body.friendid,
         video_local,
         video_remote,
-        req.body.time
+        req.body.time,
+        req.body.textcontent
       );
       res.send(200);
     } catch (err) {
@@ -190,6 +191,18 @@ router.post(
     }
   }
 );
+
+router.get("/video/:friendid", verifyToken, async (req, res) => {
+  let friendid = req.params.friendid;
+
+  try {
+    let result = await db.getfriendVideo(req.userId, friendid);
+    res.send(result);
+  } catch (err) {
+    console.log(err);
+    res.send(500);
+  }
+});
 
 router.post("/user/profile/name", verifyToken, async (req, res) => {
   let newname = req.body.name;
