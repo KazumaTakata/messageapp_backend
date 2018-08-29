@@ -268,4 +268,32 @@ router.get(
   }
 );
 
+router.post("/group", verifyToken, async (req, res) => {
+  let groupname = req.body.groupname;
+  let groupdescription = req.body.groupdescription;
+
+  try {
+    result = await db.createGroup(groupname, groupdescription, req.userId);
+    let groupid = result.insertedId.toHexString();
+    await db.insertGroupToUser(req.userId, groupid);
+    await db.insertToGroup(req.userId, groupid);
+    res.send({ groupid: groupid });
+  } catch (err) {
+    res.send(500);
+  }
+});
+
+router.get("/group", verifyToken, async (req, res) => {
+  try {
+    let user = await db.findUserById(req.userId);
+    let groupids = user.groups.map(id => {
+      return new mongo.ObjectID(id);
+    });
+    let groups = await db.getGroup(groupids);
+    res.send(groups);
+  } catch (err) {
+    res.send(500);
+  }
+});
+
 module.exports = router;

@@ -118,6 +118,7 @@ function insertUser(name, password) {
     friendIds: [],
     talks: [],
     talksall: [],
+    groups: [],
     videos: [],
     backgroundurl: "http://localhost:8181/img/rocco-caruso-722282-unsplash.jpg",
   };
@@ -316,6 +317,81 @@ function getFeed(userids) {
   });
 }
 
+function createGroup(groupname, groupdescription, creatorid) {
+  let insertobj = {
+    groupname,
+    groupdescription,
+    creatorid,
+    member: [],
+    talks: [],
+  };
+  return new Promise((resolve, reject) => {
+    connectToDatabase("groups").then(conn => {
+      conn.insertOne(insertobj, (err, result) => {
+        if (err) {
+          reject(err);
+        }
+        resolve(result);
+      });
+    }, reject);
+  });
+}
+
+function insertToGroup(memberid, groupid) {
+  return new Promise((resolve, reject) => {
+    connectToDatabase("groups").then(conn => {
+      conn.updateOne(
+        { _id: new mongo.ObjectID(groupid) },
+        {
+          $push: {
+            member: memberid,
+          },
+        },
+        (err, result) => {
+          if (err) {
+            reject(err);
+          }
+          resolve(result);
+        }
+      );
+    });
+  });
+}
+
+function insertGroupToUser(memberid, groupid) {
+  return new Promise((resolve, reject) => {
+    connectToDatabase("users").then(conn => {
+      conn.updateOne(
+        { _id: new mongo.ObjectID(memberid) },
+        {
+          $push: {
+            groups: groupid,
+          },
+        },
+        (err, result) => {
+          if (err) {
+            reject(err);
+          }
+          resolve(result);
+        }
+      );
+    });
+  });
+}
+
+function getGroup(groupids) {
+  return new Promise((resolve, reject) => {
+    connectToDatabase("groups").then(conn => {
+      conn.find({ _id: { $in: groupids } }).toArray((err, result) => {
+        if (err) {
+          reject(err);
+        }
+        resolve(result);
+      });
+    }, reject);
+  });
+}
+
 module.exports = {
   findUserById,
   findUsersById,
@@ -332,4 +408,8 @@ module.exports = {
   getfriendTalk,
   insertVideo,
   getfriendVideo,
+  createGroup,
+  insertGroupToUser,
+  insertToGroup,
+  getGroup,
 };
