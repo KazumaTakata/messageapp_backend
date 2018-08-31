@@ -1,19 +1,19 @@
-let functions = require("../../db/database");
-var mongo = require("mongodb");
+// let functions = require("../../db/database");
+// var mongo = require("mongodb");
 
-beforeEach(async () => {
-  try {
-    await functions.destroyAll();
-    await functions.insertUser("sample_user1", "sample_password1");
-    await functions.insertUser("sample_user2", "sample_password2");
-  } catch (err) {
-    console.log(err);
-  }
-});
+// beforeEach(async () => {
+//   try {
+//     await functions.destroyAll();
+//     await functions.insertUser("sample_user1", "sample_password1");
+//     await functions.insertUser("sample_user2", "sample_password2");
+//   } catch (err) {
+//     console.log(err);
+//   }
+// });
 
-afterEach(async () => {
-  await functions.destroyAll();
-});
+// afterEach(async () => {
+//   await functions.destroyAll();
+// });
 
 test("find user by id", async () => {
   let name = "sample_user3";

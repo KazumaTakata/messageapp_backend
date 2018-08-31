@@ -1,27 +1,27 @@
 const axios = require("axios");
 let functions = require("../../db/database");
-var mongo = require("mongodb");
-const config = require("../../config/index");
-const home_url = `http://localhost:${config.server_port}`;
-const login_url = "/api/user/login";
+// var mongo = require("mongodb");
+// const config = require("../../config/index");
+// const home_url = `http://localhost:${config.server_port}`;
+// const login_url = "/api/user/login";
 
-const user1 = { name: "sample_user1", pass: "sample_password1" };
-const user2 = { name: "sample_user2", pass: "sample_password2" };
-const user3 = { name: "sample_user3", pass: "sample_password3" };
+// const user1 = { name: "sample_user1", pass: "sample_password1" };
+// const user2 = { name: "sample_user2", pass: "sample_password2" };
+// const user3 = { name: "sample_user3", pass: "sample_password3" };
 
-beforeEach(async () => {
-  try {
-    await functions.destroyAll();
-    await functions.insertUser(user1.name, user1.pass);
-    await functions.insertUser(user2.name, user2.pass);
-  } catch (err) {
-    console.log(err);
-  }
-});
+// beforeEach(async () => {
+//   try {
+//     await functions.destroyAll();
+//     await functions.insertUser(user1.name, user1.pass);
+//     await functions.insertUser(user2.name, user2.pass);
+//   } catch (err) {
+//     console.log(err);
+//   }
+// });
 
-afterEach(async () => {
-  await functions.destroyAll();
-});
+// afterEach(async () => {
+//   await functions.destroyAll();
+// });
 
 test("signup new user test", async () => {
   const url = home_url + login_url;

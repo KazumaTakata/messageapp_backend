@@ -8,7 +8,8 @@ var multer = require("multer");
 const upload = multer({ dest: "static/img" });
 var db = require("./db/database");
 var config = require("./config");
-var elastic = require("./elasticsearch/index");
+var elastic = require("./elasticsearch/individualtalk");
+var elasticgroup = require("./elasticsearch/grouptalk");
 var router = express.Router();
 
 router.get("/friend", verifyToken, async (req, res) => {
@@ -268,6 +269,25 @@ router.get(
   }
 );
 
+router.get(
+  "/elastic/talkgroup/:groupid/:content",
+  verifyToken,
+  async (req, res) => {
+    let groupid = req.params.groupid;
+    let content = req.params.content;
+    try {
+      let result = await elasticgroup.search(groupid, content);
+      console.log(result.hits.hits);
+      let sendobj = result.hits.hits.map(result => {
+        return result._source;
+      });
+      res.status(200).send(sendobj);
+    } catch (err) {
+      res.send(500);
+    }
+  }
+);
+
 router.post("/group", verifyToken, async (req, res) => {
   let groupname = req.body.groupname;
   let groupdescription = req.body.groupdescription;
@@ -292,6 +312,72 @@ router.get("/group", verifyToken, async (req, res) => {
     let groups = await db.getGroup(groupids);
     res.send(groups);
   } catch (err) {
+    res.send(500);
+  }
+});
+
+router.get("/group/talk/:groupid", verifyToken, async (req, res) => {
+  let groupid = req.params.groupid;
+  try {
+    let result = await db.getGroupTalks(groupid);
+    res.send(result);
+  } catch (err) {
+    console.log(err);
+    res.send(500);
+  }
+});
+
+router.get("/group/:groupname", verifyToken, async (req, res) => {
+  let groupname = req.params.groupname;
+  try {
+    let result = await db.findGroupByName(groupname);
+    res.send({ id: result._id, name: result.groupname });
+  } catch (err) {
+    console.log(err);
+    res.send(500);
+  }
+});
+
+router.get("/group/member/:groupid", verifyToken, async (req, res) => {
+  let groupid = req.params.groupid;
+  try {
+    let result = await db.getGroupMembers(groupid);
+    let sendobj = result.map(m => {
+      return { name: m.name, id: m._id, photourl: m.photourl };
+    });
+    res.send(sendobj);
+  } catch (err) {
+    console.log(err);
+    res.send(500);
+  }
+});
+
+router.put("/group/", verifyToken, async (req, res) => {
+  let groupid = req.body.groupid;
+  try {
+    let result = await db.findGroupById(groupid);
+    if (!result.member.includes(req.userId)) {
+      await db.insertToGroup(req.userId, groupid);
+      await db.insertGroupToUser(req.userId, groupid);
+      res.send(200);
+    } else {
+      res.send(400);
+    }
+  } catch (err) {
+    console.log(err);
+    res.send(500);
+  }
+});
+
+router.post("/group/talk/star", verifyToken, async (req, res) => {
+  let groupid = req.body.groupid;
+  let chatindex = req.body.chatindex;
+
+  try {
+    let result = await db.insertStarToGroup(groupid, Number(chatindex));
+    res.send(200);
+  } catch (err) {
+    console.log(err);
     res.send(500);
   }
 });

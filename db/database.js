@@ -392,6 +392,131 @@ function getGroup(groupids) {
   });
 }
 
+function findGroupById(groupid) {
+  return new Promise((resolve, reject) => {
+    connectToDatabase("groups").then(conn => {
+      conn.findOne({ _id: new mongo.ObjectID(groupid) }, function(err, result) {
+        if (err) {
+          reject(err);
+        }
+        resolve(result);
+        conn.db.close();
+      });
+    }, reject);
+  });
+}
+
+function findGroupByName(groupname) {
+  return new Promise((resolve, reject) => {
+    connectToDatabase("groups").then(conn => {
+      conn.findOne({ groupname: groupname }, function(err, result) {
+        if (err) {
+          reject(err);
+        }
+        resolve(result);
+        conn.db.close();
+      });
+    }, reject);
+  });
+}
+
+// { content, senderid, time }
+function insertTalkToGroup(groupid, insertobj) {
+  return new Promise((resolve, reject) => {
+    connectToDatabase("groups").then(conn => {
+      conn.updateOne(
+        { _id: new mongo.ObjectID(groupid) },
+        {
+          $push: {
+            talks: insertobj,
+          },
+        },
+        (err, result) => {
+          if (err) {
+            reject(err);
+          }
+          resolve(result);
+        }
+      );
+    });
+  });
+}
+
+function insertStarToGroup(groupid, chatindex) {
+  let query = "talks." + chatindex + ".star";
+  return new Promise((resolve, reject) => {
+    connectToDatabase("groups").then(conn => {
+      conn.updateOne(
+        { _id: new mongo.ObjectID(groupid) },
+        {
+          $inc: {
+            [`talks.${chatindex}.star`]: 1,
+          },
+        },
+        (err, result) => {
+          if (err) {
+            reject(err);
+          }
+          resolve(result);
+        }
+      );
+    });
+  });
+}
+
+function insertTalkToGroupAsResponce(groupid, chatindex, insertobj) {
+  let query = "talks." + chatindex + ".star";
+  return new Promise((resolve, reject) => {
+    connectToDatabase("groups").then(conn => {
+      conn.updateOne(
+        { _id: new mongo.ObjectID(groupid) },
+        {
+          $push: {
+            [`talks.${chatindex}.response`]: insertobj,
+          },
+        },
+        (err, result) => {
+          if (err) {
+            reject(err);
+          }
+          resolve(result);
+        }
+      );
+    });
+  });
+}
+
+function getGroupTalks(groupid) {
+  return new Promise((resolve, reject) => {
+    connectToDatabase("groups").then(conn => {
+      conn.findOne({ _id: new mongo.ObjectID(groupid) }, (err, result) => {
+        if (err) {
+          reject(err);
+        }
+        resolve(result.talks);
+      });
+    });
+  });
+}
+
+function getGroupMembers(groupid) {
+  return new Promise((resolve, reject) => {
+    connectToDatabase("groups").then(conn => {
+      conn.findOne(
+        { _id: new mongo.ObjectID(groupid) },
+        async (err, result) => {
+          if (err) {
+            reject(err);
+          }
+          let memberids = result.member.map(m => new mongo.ObjectID(m));
+          let membernamephoto = await findUsersById(memberids);
+          resolve(membernamephoto);
+        }
+      );
+    });
+  });
+}
+
 module.exports = {
   findUserById,
   findUsersById,
@@ -412,4 +537,11 @@ module.exports = {
   insertGroupToUser,
   insertToGroup,
   getGroup,
+  findGroupById,
+  insertTalkToGroup,
+  getGroupTalks,
+  findGroupByName,
+  getGroupMembers,
+  insertStarToGroup,
+  insertTalkToGroupAsResponce,
 };

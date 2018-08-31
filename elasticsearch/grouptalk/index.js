@@ -5,7 +5,7 @@ var elasticClient = new elasticsearch.Client({
   log: "info",
 });
 
-var indexName = "messageapp";
+var indexName = "messageappgrouptalks";
 let typeName = "talks";
 
 /**
@@ -44,11 +44,10 @@ function initMapping() {
     type: typeName,
     body: {
       properties: {
-        userid: { type: "text" },
-        friendid: { type: "text" },
+        senderid: { type: "text" },
         content: { type: "text" },
-        which: { type: "boolean" },
         time: { type: "keyword" },
+        groupid: { type: "text" },
       },
     },
   });
@@ -60,17 +59,16 @@ function addDocument(document) {
     index: indexName,
     type: typeName,
     body: {
-      userid: document.userid,
-      friendid: document.friendid,
+      senderid: document.senderid,
       content: document.content,
       time: document.time,
-      which: document.which,
+      groupid: document.groupid,
     },
   });
 }
 exports.addDocument = addDocument;
 
-function search(input, input2, content) {
+function search(input, content) {
   return elasticClient.search({
     index: indexName,
     type: typeName,
@@ -80,15 +78,8 @@ function search(input, input2, content) {
           must: [
             {
               match: {
-                userid: {
+                groupid: {
                   query: input,
-                },
-              },
-            },
-            {
-              match: {
-                friendid: {
-                  query: input2,
                 },
               },
             },

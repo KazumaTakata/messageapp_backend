@@ -1,30 +1,30 @@
 const axios = require("axios");
 let functions = require("../../db/database");
-var mongo = require("mongodb");
-const config = require("../../config/index");
-let FormData = require("form-data");
-const home_url = `http://localhost:${config.server_port}`;
-const fs = require("fs");
-const user1 = { name: "sample_user1", pass: "sample_password1" };
-const user2 = { name: "sample_user2", pass: "sample_password2" };
-const user3 = { name: "sample_user3", pass: "sample_password3" };
+// var mongo = require("mongodb");
+// const config = require("../../config/index");
+// let FormData = require("form-data");
+// const home_url = `http://localhost:${config.server_port}`;
+// const fs = require("fs");
+// const user1 = { name: "sample_user1", pass: "sample_password1" };
+// const user2 = { name: "sample_user2", pass: "sample_password2" };
+// const user3 = { name: "sample_user3", pass: "sample_password3" };
 
 let userid1;
 let userid2;
 
-beforeEach(async () => {
-  try {
-    await functions.destroyAll();
-    userid1 = await functions.insertUser(user1.name, user1.pass);
-    userid2 = await functions.insertUser(user2.name, user2.pass);
-  } catch (err) {
-    console.log(err);
-  }
-});
+// beforeEach(async () => {
+//   try {
+//     await functions.destroyAll();
+//     userid1 = await functions.insertUser(user1.name, user1.pass);
+//     userid2 = await functions.insertUser(user2.name, user2.pass);
+//   } catch (err) {
+//     console.log(err);
+//   }
+// });
 
-afterEach(async () => {
-  await functions.destroyAll();
-});
+// afterEach(async () => {
+//   await functions.destroyAll();
+// });
 
 async function dummylogin() {
   const loginurl = home_url + "/api/user/login/";

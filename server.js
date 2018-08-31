@@ -4,7 +4,8 @@ var MongoClient = require("mongodb").MongoClient;
 var mongo = require("mongodb");
 let database = require("./db/database");
 var config = require("./config");
-var elastic = require("./elasticsearch/index");
+var elastic = require("./elasticsearch/individualtalk");
+var elasticgroup = require("./elasticsearch/grouptalk");
 
 const wss = new WebSocket.Server({ port: 8084 });
 let socketPool = {};
@@ -21,56 +22,81 @@ wss.on("connection", function connection(ws) {
   ws.on("message", function incoming(message) {
     console.log(message);
     let token = JSON.parse(message.toString()).myId;
-    let friendId = JSON.parse(message.toString()).friendId;
-    let content = JSON.parse(message.toString()).content;
-    let time = JSON.parse(message.toString()).time;
-
-    let ping = JSON.parse(message.toString()).ping;
 
     jwt.verify(token, config.secret, async function(err, decoded) {
       let myId = decoded.id;
+      let ping = JSON.parse(message.toString()).ping;
 
       if (ping == "hey") {
         socketPool[myId] = ws;
       } else {
+        let friendId = JSON.parse(message.toString()).friendId;
+        let content = JSON.parse(message.toString()).content;
+        let time = JSON.parse(message.toString()).time;
+        let groupid = JSON.parse(message.toString()).groupid;
+        let chatindex = JSON.parse(message.toString()).chatindex;
         socketPool[myId] = ws;
         console.log("received: %s", message);
         // wss.clients.forEach( (client) => {
         //     client.send(message)
         // });
-        if (socketPool[friendId] != undefined) {
-          try {
-            let payload = {
-              content: content,
-              id: myId,
-              time: time,
-            };
-            socketPool[friendId].send(JSON.stringify(payload));
-          } catch (e) {
-            console.log(e);
+        if (groupid != undefined) {
+          let group = await database.findGroupById(groupid);
+          group.member.forEach(async member => {
+            if (member != myId) {
+              if (socketPool[member] != undefined) {
+                try {
+                  let payload = { content, id: myId, groupid, time, chatindex };
+                  socketPool[friendId].send(JSON.stringify(payload));
+                } catch (e) {
+                  console.log(e);
+                }
+              }
+            }
+          });
+          let insertobj = { content, senderid: myId, time };
+          if (chatindex != undefined) {
+            await database.insertTalkToGroupAsResponce(
+              groupid,
+              chatindex,
+              insertobj
+            );
+          } else {
+            await database.insertTalkToGroup(groupid, insertobj);
+            let elasticobj = { senderid: myId, time, content, groupid };
+            await elasticgroup.addDocument(elasticobj);
           }
         } else {
-          await database.insertTalk(myId, friendId, content, time);
-        }
-        await database.insertTalkAll(myId, friendId, content, time, 1);
-        await database.insertTalkAll(friendId, myId, content, time, 0);
+          if (socketPool[friendId] != undefined) {
+            try {
+              let payload = { content: content, id: myId, time: time };
+              socketPool[friendId].send(JSON.stringify(payload));
+            } catch (e) {
+              console.log(e);
+            }
+          } else {
+            await database.insertTalk(myId, friendId, content, time);
+          }
+          await database.insertTalkAll(myId, friendId, content, time, 1);
+          await database.insertTalkAll(friendId, myId, content, time, 0);
 
-        let insertobj = {
-          userid: myId,
-          friendid: friendId,
-          content: content,
-          time: time,
-          which: true,
-        };
-        await elastic.addDocument(insertobj);
-        let insertobj2 = {
-          userid: friendId,
-          friendid: myId,
-          content: content,
-          time: time,
-          which: false,
-        };
-        await elastic.addDocument(insertobj2);
+          let insertobj = {
+            userid: myId,
+            friendid: friendId,
+            content: content,
+            time: time,
+            which: true,
+          };
+          await elastic.addDocument(insertobj);
+          let insertobj2 = {
+            userid: friendId,
+            friendid: myId,
+            content: content,
+            time: time,
+            which: false,
+          };
+          await elastic.addDocument(insertobj2);
+        }
       }
     });
   });

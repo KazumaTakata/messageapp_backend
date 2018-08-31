@@ -1,4 +1,4 @@
-var elastic = require("./index");
+var elastic = require(".");
 elastic
   .indexExists()
   .then(function(exists) {
