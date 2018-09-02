@@ -74,6 +74,17 @@ router.get("/user/talks", verifyToken, async (req, res) => {
   res.send(talks);
 });
 
+router.post(
+  "/user/talks/file",
+  verifyToken,
+  upload.single("file"),
+  async (req, res) => {
+    let filepath = req.file.filename;
+    let talks = await db.getStoredTalk(req.userId);
+    res.send(talks);
+  }
+);
+
 router.get("/user/talks/:friendId", verifyToken, async (req, res) => {
   let friendId = req.params.friendId;
   let talks = await db.getfriendTalk(req.userId, friendId);

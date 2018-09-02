@@ -74,6 +74,7 @@ wss.on("connection", function connection(ws) {
       let time = JSON.parse(message.toString()).time;
       let groupid = JSON.parse(message.toString()).groupid;
       let chatindex = JSON.parse(message.toString()).chatindex;
+      let filepath = JSON.parse(message.toString()).filepath;
 
       if (type == "ping") {
         socketPool[myId] = ws;
@@ -136,6 +137,7 @@ wss.on("connection", function connection(ws) {
                   groupid,
                   time,
                   chatindex,
+                  filepath,
                 };
                 socket.send(JSON.stringify(payload));
               } catch (e) {
@@ -152,8 +154,8 @@ wss.on("connection", function connection(ws) {
             insertobj
           );
         } else {
-          await database.insertTalkToGroup(groupid, insertobj);
-          let elasticobj = { senderid: myId, time, content, groupid };
+          await database.insertTalkToGroup(groupid, insertobj, filepath);
+          let elasticobj = { senderid: myId, time, content, groupid, filepath };
           await elasticgroup.addDocument(elasticobj);
         }
       } else if (type == "talk") {

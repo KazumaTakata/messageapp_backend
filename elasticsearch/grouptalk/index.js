@@ -48,6 +48,7 @@ function initMapping() {
         content: { type: "text" },
         time: { type: "keyword" },
         groupid: { type: "text" },
+        filepath: { type: "keyword" },
       },
     },
   });
