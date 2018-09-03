@@ -5,12 +5,35 @@ var jwt = require("jsonwebtoken");
 var express = require("express");
 var verifyToken = require("./middleware/verifyToken");
 var multer = require("multer");
-const upload = multer({ dest: "static/img" });
+// const upload = multer({
+//   dest: "static/img",
+//   filename: function(req, file, cb) {
+//     cb(null, file.originalname + "-" + Date.now());
+//   },
+// });
 var db = require("./db/database");
 var config = require("./config");
 var elastic = require("./elasticsearch/individualtalk");
 var elasticgroup = require("./elasticsearch/grouptalk");
 var router = express.Router();
+
+var storage = multer.diskStorage({
+  destination: function(req, file, cb) {
+    cb(null, "static/img");
+  },
+  filename: function(req, file, cb) {
+    let filenamelist = file.originalname.split(".");
+    let filename =
+      filenamelist[0] +
+      `-${Date.now()}.` +
+      filenamelist[filenamelist.length - 1];
+    cb(null, filename);
+  },
+});
+
+const upload = multer({
+  storage,
+});
 
 router.get("/friend", verifyToken, async (req, res) => {
   try {
@@ -80,8 +103,7 @@ router.post(
   upload.single("file"),
   async (req, res) => {
     let filepath = req.file.filename;
-    let talks = await db.getStoredTalk(req.userId);
-    res.send(talks);
+    res.send({ filepath: `http://localhost:8181/img/${filepath}` });
   }
 );
 

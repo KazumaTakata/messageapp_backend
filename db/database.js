@@ -223,14 +223,14 @@ function getfriendVideo(senderid, friendid) {
   });
 }
 
-function insertTalk(senderid, recieverid, chatcontent, time) {
+function insertTalk(senderid, recieverid, content, time, filepath) {
   return new Promise((resolve, reject) => {
     connectToDatabase("users").then(conn => {
       conn.updateOne(
         { _id: new mongo.ObjectID(recieverid) },
         {
           $push: {
-            talks: { content: chatcontent, friendid: senderid, time: time },
+            talks: { content, friendid: senderid, time, filepath },
           },
         },
         (err, result) => {
@@ -244,7 +244,7 @@ function insertTalk(senderid, recieverid, chatcontent, time) {
   });
 }
 
-function insertTalkAll(userid1, userid2, chatcontent, time, which) {
+function insertTalkAll(userid1, userid2, content, time, filepath, which) {
   return new Promise((resolve, reject) => {
     connectToDatabase("users").then(conn => {
       conn.updateOne(
@@ -252,10 +252,11 @@ function insertTalkAll(userid1, userid2, chatcontent, time, which) {
         {
           $push: {
             talksall: {
-              content: chatcontent,
+              content,
               friendid: userid1,
-              time: time,
-              which: which,
+              time,
+              which,
+              filepath,
             },
           },
         },

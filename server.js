@@ -146,7 +146,7 @@ wss.on("connection", function connection(ws) {
             }
           }
         });
-        let insertobj = { content, senderid: myId, time };
+        let insertobj = { content, senderid: myId, time, filepath };
         if (chatindex != undefined) {
           await database.insertTalkToGroupAsResponce(
             groupid,
@@ -154,7 +154,7 @@ wss.on("connection", function connection(ws) {
             insertobj
           );
         } else {
-          await database.insertTalkToGroup(groupid, insertobj, filepath);
+          await database.insertTalkToGroup(groupid, insertobj);
           let elasticobj = { senderid: myId, time, content, groupid, filepath };
           await elasticgroup.addDocument(elasticobj);
         }
@@ -166,16 +166,31 @@ wss.on("connection", function connection(ws) {
               content: content,
               id: myId,
               time: time,
+              filepath,
             };
             socketPool[friendId].send(JSON.stringify(payload));
           } catch (e) {
             console.log(e);
           }
         } else {
-          await database.insertTalk(myId, friendId, content, time);
+          await database.insertTalk(myId, friendId, content, time, filepath);
         }
-        await database.insertTalkAll(myId, friendId, content, time, 1);
-        await database.insertTalkAll(friendId, myId, content, time, 0);
+        await database.insertTalkAll(
+          myId,
+          friendId,
+          content,
+          time,
+          filepath,
+          1
+        );
+        await database.insertTalkAll(
+          friendId,
+          myId,
+          content,
+          time,
+          filepath,
+          0
+        );
 
         let insertobj = {
           userid: myId,
@@ -183,6 +198,7 @@ wss.on("connection", function connection(ws) {
           content: content,
           time: time,
           which: true,
+          filepath,
         };
         await elastic.addDocument(insertobj);
         let insertobj2 = {
@@ -191,6 +207,7 @@ wss.on("connection", function connection(ws) {
           content: content,
           time: time,
           which: false,
+          filepath,
         };
         await elastic.addDocument(insertobj2);
       }

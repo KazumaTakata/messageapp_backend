@@ -12,6 +12,7 @@ app.use(
     parameterLimit: 1000000,
   })
 );
+
 app.use(bodyParser.json({ limit: "50mb", extended: true }));
 app.use(express.static("static"));
 app.use(cors());

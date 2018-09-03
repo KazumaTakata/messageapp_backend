@@ -64,6 +64,7 @@ function addDocument(document) {
       content: document.content,
       time: document.time,
       groupid: document.groupid,
+      filepath: document.filepath,
     },
   });
 }
