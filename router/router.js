@@ -3,18 +3,12 @@ var mongo = require("mongodb");
 var url = "mongodb://localhost:27017/";
 var jwt = require("jsonwebtoken");
 var express = require("express");
-var verifyToken = require("./middleware/verifyToken");
+var verifyToken = require("../middleware/verifyToken");
 var multer = require("multer");
-// const upload = multer({
-//   dest: "static/img",
-//   filename: function(req, file, cb) {
-//     cb(null, file.originalname + "-" + Date.now());
-//   },
-// });
-var db = require("./db/database");
-var config = require("./config");
-var elastic = require("./elasticsearch/individualtalk");
-var elasticgroup = require("./elasticsearch/grouptalk");
+var db = require("../db/database");
+var config = require("../config");
+var elastic = require("../elasticsearch/individualtalk");
+var elasticgroup = require("../elasticsearch/grouptalk");
 var router = express.Router();
 
 var storage = multer.diskStorage({
@@ -122,6 +116,20 @@ router.post("/user/talks", verifyToken, async (req, res) => {
   } catch (err) {
     console.log(err);
     res.send(500);
+  }
+});
+
+router.get("/user/myState/", verifyToken, async (req, res) => {
+  try {
+    let user = await db.findUserById(req.userId);
+    let sendobj = {
+      name: user.name,
+      photourl: user.photourl,
+      id: user._id.toString(),
+    };
+    res.status(200).send(sendobj);
+  } catch (err) {
+    res.send(400);
   }
 });
 

@@ -110,7 +110,18 @@ function findUsersById(ids) {
   });
 }
 
-function insertUser(name, password) {
+function findUserByGithubid(github_id) {
+  return new Promise((resolve, reject) => {
+    connectToDatabase("users").then(conn => {
+      conn.findOne({ github_id }, function(err, result) {
+        resolve(result);
+        conn.db.close();
+      });
+    }, reject);
+  });
+}
+
+function insertUser(name, password, github_id) {
   let obj = {
     name: name,
     password: password,
@@ -121,6 +132,7 @@ function insertUser(name, password) {
     groups: [],
     videos: [],
     backgroundurl: "http://localhost:8181/img/rocco-caruso-722282-unsplash.jpg",
+    github_id,
   };
 
   return new Promise((resolve, reject) => {
@@ -545,4 +557,5 @@ module.exports = {
   getGroupMembers,
   insertStarToGroup,
   insertTalkToGroupAsResponce,
+  findUserByGithubid,
 };

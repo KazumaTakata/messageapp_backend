@@ -1,7 +1,8 @@
 var express = require("express");
 var app = express();
 var bodyParser = require("body-parser");
-var router = require("./router");
+var router = require("./router/router");
+var callbackrouter = require("./router/router2");
 var cors = require("cors");
 const config = require("./config/index");
 
@@ -13,6 +14,10 @@ app.use(
   })
 );
 
+var passport = require("./passport");
+
+app.use(passport.initialize());
+
 app.use(bodyParser.json({ limit: "50mb", extended: true }));
 app.use(express.static("static"));
 app.use(cors());
@@ -20,5 +25,6 @@ app.use(cors());
 var port = process.env.PORT || config.server_port;
 
 app.use("/api", router);
+app.use("/", callbackrouter);
 
 app.listen(port);
