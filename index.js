@@ -19,9 +19,9 @@ var passport = require("./passport");
 app.use(passport.initialize());
 
 app.use(bodyParser.json({ limit: "50mb", extended: true }));
-app.use(express.static("static"));
-app.use(cors());
 
+app.use(cors());
+app.use(express.static("static"));
 var port = process.env.PORT || config.server_port;
 
 app.use("/api", router);

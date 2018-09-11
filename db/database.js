@@ -1,6 +1,8 @@
 var MongoClient = require("mongodb").MongoClient;
 var mongo = require("mongodb");
+var config = require("../config");
 var url = "mongodb://localhost:8899/";
+var replicaurl = "mongodb://localhost:8891";
 
 var errHandler = function(err) {
   console.log(err);
@@ -8,11 +10,11 @@ var errHandler = function(err) {
 
 let connectToDatabase = function(Cname) {
   return new Promise(function(resolve, reject) {
-    MongoClient.connect(url, function(err, db) {
+    MongoClient.connect(replicaurl, function(err, db) {
       if (err) {
         reject(err);
       } else {
-        let dbo = db.db("swiftline");
+        let dbo = db.db(config.database_name);
         let collection = dbo.collection(Cname);
         collection.db = db;
         resolve(collection);
@@ -42,6 +44,28 @@ function updateOneField(id, fieldname, fieldvalue) {
       updateData[fieldname] = fieldvalue;
       conn.updateOne(
         { _id: new mongo.ObjectID(id) },
+        {
+          $set: updateData,
+        },
+        (err, result) => {
+          if (err) {
+            reject(err);
+          }
+          resolve(result);
+          conn.db.close();
+        }
+      );
+    });
+  });
+}
+
+function updateOneFieldGroup(groupid, fieldname, fieldvalue) {
+  return new Promise((resolve, reject) => {
+    connectToDatabase("groups").then(conn => {
+      let updateData = {};
+      updateData[fieldname] = fieldvalue;
+      conn.updateOne(
+        { _id: new mongo.ObjectID(groupid) },
         {
           $set: updateData,
         },
@@ -131,7 +155,7 @@ function insertUser(name, password, github_id) {
     talksall: [],
     groups: [],
     videos: [],
-    backgroundurl: "http://localhost:8181/img/rocco-caruso-722282-unsplash.jpg",
+    backgroundurl: "http://localhost:8181/img/defaultbackground.jpg",
     github_id,
   };
 
@@ -317,10 +341,42 @@ function insertFeed(userId, feedcontent, photourl) {
   });
 }
 
+function insertGroupFeed(userId, feedcontent, photourl, groupid) {
+  let insertobj = {
+    userId,
+    feedcontent,
+    photourl,
+    groupid,
+  };
+  return new Promise((resolve, reject) => {
+    connectToDatabase("groupfeeds").then(conn => {
+      conn.insertOne(insertobj, (err, result) => {
+        if (err) {
+          reject(err);
+        }
+        resolve(result);
+      });
+    }, reject);
+  });
+}
+
 function getFeed(userids) {
   return new Promise((resolve, reject) => {
     connectToDatabase("feeds").then(conn => {
       conn.find({ userId: { $in: userids } }).toArray((err, result) => {
+        if (err) {
+          reject(err);
+        }
+        resolve(result);
+      });
+    }, reject);
+  });
+}
+
+function getGroupFeed(groupids) {
+  return new Promise((resolve, reject) => {
+    connectToDatabase("groupfeeds").then(conn => {
+      conn.find({ groupid: { $in: groupids } }).toArray((err, result) => {
         if (err) {
           reject(err);
         }
@@ -455,6 +511,52 @@ function insertTalkToGroup(groupid, insertobj) {
   });
 }
 
+function updateTalkToGroup(groupid, content, index) {
+  return new Promise((resolve, reject) => {
+    connectToDatabase("groups").then(conn => {
+      conn.updateOne(
+        { _id: new mongo.ObjectID(groupid) },
+        {
+          $set: {
+            [`talks.${index}.content`]: content,
+          },
+        },
+        (err, result) => {
+          if (err) {
+            reject(err);
+          }
+          resolve(result);
+        }
+      );
+    });
+  });
+}
+
+function updateTalk(myid, friendid, content, time) {
+  return new Promise((resolve, reject) => {
+    connectToDatabase("users").then(conn => {
+      conn.updateOne(
+        {
+          _id: new mongo.ObjectID(myid),
+          "talksall.friendid": friendid,
+          "talksall.time": time,
+        },
+        {
+          $set: {
+            "talksall.$.content": content,
+          },
+        },
+        (err, result) => {
+          if (err) {
+            reject(err);
+          }
+          resolve(result);
+        }
+      );
+    });
+  });
+}
+
 function insertStarToGroup(groupid, chatindex) {
   let query = "talks." + chatindex + ".star";
   return new Promise((resolve, reject) => {
@@ -558,4 +660,9 @@ module.exports = {
   insertStarToGroup,
   insertTalkToGroupAsResponce,
   findUserByGithubid,
+  updateTalkToGroup,
+  insertGroupFeed,
+  getGroupFeed,
+  updateOneFieldGroup,
+  updateTalk,
 };

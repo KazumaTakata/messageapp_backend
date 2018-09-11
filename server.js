@@ -4,8 +4,8 @@ var MongoClient = require("mongodb").MongoClient;
 var mongo = require("mongodb");
 let database = require("./db/database");
 var config = require("./config");
-var elastic = require("./elasticsearch/individualtalk");
-var elasticgroup = require("./elasticsearch/grouptalk");
+var elastic = require("./elasticsearch/individual_talk");
+var elasticgroup = require("./elasticsearch/group_talk");
 
 const wss = new WebSocket.Server({ port: 8084 });
 let socketPool = {};
@@ -155,8 +155,8 @@ wss.on("connection", function connection(ws) {
           );
         } else {
           await database.insertTalkToGroup(groupid, insertobj);
-          let elasticobj = { senderid: myId, time, content, groupid, filepath };
-          await elasticgroup.addDocument(elasticobj);
+          // let elasticobj = { senderid: myId, time, content, groupid, filepath };
+          // await elasticgroup.addDocument(elasticobj);
         }
       } else if (type == "talk") {
         if (socketPool[friendId] != undefined) {
@@ -192,24 +192,24 @@ wss.on("connection", function connection(ws) {
           0
         );
 
-        let insertobj = {
-          userid: myId,
-          friendid: friendId,
-          content: content,
-          time: time,
-          which: true,
-          filepath,
-        };
-        await elastic.addDocument(insertobj);
-        let insertobj2 = {
-          userid: friendId,
-          friendid: myId,
-          content: content,
-          time: time,
-          which: false,
-          filepath,
-        };
-        await elastic.addDocument(insertobj2);
+        // let insertobj = {
+        //   userid: myId,
+        //   friendid: friendId,
+        //   content: content,
+        //   time: time,
+        //   which: true,
+        //   filepath,
+        // };
+        // await elastic.addDocument(insertobj);
+        // let insertobj2 = {
+        //   userid: friendId,
+        //   friendid: myId,
+        //   content: content,
+        //   time: time,
+        //   which: false,
+        //   filepath,
+        // };
+        // await elastic.addDocument(insertobj2);
       }
     });
   });

@@ -7,8 +7,11 @@ var verifyToken = require("../middleware/verifyToken");
 var multer = require("multer");
 var db = require("../db/database");
 var config = require("../config");
-var elastic = require("../elasticsearch/individualtalk");
-var elasticgroup = require("../elasticsearch/grouptalk");
+var elastictalk = require("../elasticsearch/individual_talk");
+var elasticgrouptalk = require("../elasticsearch/group_talk");
+var elasticuser = require("../elasticsearch/user");
+var elasticgroup = require("../elasticsearch/group_user");
+
 var router = express.Router();
 
 var storage = multer.diskStorage({
@@ -142,6 +145,7 @@ router.post("/user/login/", async (req, res) => {
     let someuser = await db.findUserByName(name);
     if (someuser == null) {
       let newuserid = await db.insertUser(name, pass);
+
       let token = jwt.sign({ id: newuserid }, config.secret, {
         expiresIn: 86400, // expires in 24 hours
       });
@@ -152,6 +156,7 @@ router.post("/user/login/", async (req, res) => {
         id: newuserid,
         name: name,
         photourl: "http://localhost:8181/img/defaultprofile.jpg",
+        backgroundurl: "http://localhost:8181/img/defaultbackground.jpg",
       });
     } else {
       res.send(400);
@@ -169,6 +174,7 @@ router.post("/user/login/", async (req, res) => {
           id: someuser._id.toString(),
           name: someuser.name,
           photourl: someuser.photourl,
+          backgroundurl: someuser.backgroundurl,
         });
       } else {
         res.status(400).send({ login: false });
@@ -189,7 +195,7 @@ router.get("/user/profile", verifyToken, async (req, res) => {
   }
 });
 
-router.post(
+router.put(
   "/user/profile/photo",
   upload.single("image"),
   verifyToken,
@@ -197,6 +203,21 @@ router.post(
     let photourl = `http://localhost:8181/img/${req.file.filename}`;
     try {
       await db.updateOneField(req.userId, "photourl", photourl);
+      res.send({ photourl });
+    } catch (err) {
+      res.send(500);
+    }
+  }
+);
+
+router.put(
+  "/user/profile/back",
+  upload.single("image"),
+  verifyToken,
+  async (req, res) => {
+    let photourl = `http://localhost:8181/img/${req.file.filename}`;
+    try {
+      await db.updateOneField(req.userId, "backgroundurl", photourl);
       res.send({ photourl });
     } catch (err) {
       res.send(500);
@@ -266,15 +287,30 @@ router.post(
     if (req.file != undefined) {
       photourl = `http://localhost:8181/img/${req.file.filename}`;
     }
-    try {
-      let result = await db.insertFeed(
-        req.userId,
-        req.body.feedcontent,
-        photourl
-      );
-      res.send(200);
-    } catch (err) {
-      res.send(500);
+    let groupid = req.body.groupid;
+    if (groupid != undefined) {
+      try {
+        let result = await db.insertGroupFeed(
+          req.userId,
+          req.body.feedcontent,
+          photourl,
+          groupid
+        );
+        res.send(200);
+      } catch (err) {
+        res.send(500);
+      }
+    } else {
+      try {
+        let result = await db.insertFeed(
+          req.userId,
+          req.body.feedcontent,
+          photourl
+        );
+        res.send(200);
+      } catch (err) {
+        res.send(500);
+      }
     }
   }
 );
@@ -285,7 +321,12 @@ router.get("/user/feed", verifyToken, async (req, res) => {
     let rawfriendsIds = user.friendIds.map(id => id.toString());
     rawfriendsIds.push(req.userId);
     let feeds = await db.getFeed(rawfriendsIds);
-    res.send(feeds);
+
+    let groupids = user.groups;
+    let groupfeeds = await db.getGroupFeed(groupids);
+
+    let sendobj = { feeds, groupfeeds };
+    res.send(sendobj);
   } catch (err) {
     res.send(500);
   }
@@ -298,7 +339,7 @@ router.get(
     let friendId = req.params.friendid;
     let content = req.params.content;
     try {
-      let result = await elastic.search(req.userId, friendId, content);
+      let result = await elastictalk.search(req.userId, friendId, content);
       console.log(result.hits.hits);
       let sendobj = result.hits.hits.map(result => {
         return result._source;
@@ -317,7 +358,7 @@ router.get(
     let groupid = req.params.groupid;
     let content = req.params.content;
     try {
-      let result = await elasticgroup.search(groupid, content);
+      let result = await elasticgrouptalk.search(groupid, content);
       console.log(result.hits.hits);
       let sendobj = result.hits.hits.map(result => {
         return result._source;
@@ -328,6 +369,36 @@ router.get(
     }
   }
 );
+
+router.get("/elastic/user/:name", verifyToken, async (req, res) => {
+  let username = req.params.name;
+
+  try {
+    let result = await elasticuser.search(username);
+    console.log(result.hits.hits);
+    let sendobj = result.hits.hits.map(result => {
+      return result._source;
+    });
+    res.status(200).send(sendobj);
+  } catch (err) {
+    res.send(500);
+  }
+});
+
+router.get("/elastic/group/:name", verifyToken, async (req, res) => {
+  let groupname = req.params.name;
+
+  try {
+    let result = await elasticgroup.search(groupname);
+    console.log(result.hits.hits);
+    let sendobj = result.hits.hits.map(result => {
+      return result._source;
+    });
+    res.status(200).send(sendobj);
+  } catch (err) {
+    res.send(500);
+  }
+});
 
 router.post("/group", verifyToken, async (req, res) => {
   let groupname = req.body.groupname;
@@ -372,7 +443,11 @@ router.get("/group/:groupname", verifyToken, async (req, res) => {
   let groupname = req.params.groupname;
   try {
     let result = await db.findGroupByName(groupname);
-    res.send({ id: result._id, name: result.groupname });
+    if (result != null) {
+      res.send({ id: result._id, name: result.groupname });
+    } else {
+      res.send({ err: "There is no group of this name." });
+    }
   } catch (err) {
     console.log(err);
     res.send(500);
@@ -402,7 +477,7 @@ router.put("/group/", verifyToken, async (req, res) => {
       await db.insertGroupToUser(req.userId, groupid);
       res.send(200);
     } else {
-      res.send(400);
+      res.send({ err: "You are already memeber of this group" });
     }
   } catch (err) {
     console.log(err);
@@ -413,12 +488,93 @@ router.put("/group/", verifyToken, async (req, res) => {
 router.post("/group/talk/star", verifyToken, async (req, res) => {
   let groupid = req.body.groupid;
   let chatindex = req.body.chatindex;
-
   try {
     let result = await db.insertStarToGroup(groupid, Number(chatindex));
     res.send(200);
   } catch (err) {
     console.log(err);
+    res.send(500);
+  }
+});
+
+router.put("/group/talk", verifyToken, async (req, res) => {
+  let index = req.body.index;
+  let content = req.body.content;
+  let groupid = req.body.groupid;
+
+  try {
+    let result = await db.updateTalkToGroup(groupid, content, index);
+    res.send(200);
+  } catch (err) {
+    console.log(err);
+    res.send(500);
+  }
+});
+
+router.put("/talk", verifyToken, async (req, res) => {
+  let time = req.body.time;
+  let content = req.body.content;
+  let friendid = req.body.friendid;
+
+  try {
+    let result = await db.updateTalk(req.userId, friendid, content, time);
+    res.send(200);
+  } catch (err) {
+    console.log(err);
+    res.send(500);
+  }
+});
+
+router.put(
+  "/group/photo",
+  upload.single("image"),
+  verifyToken,
+  async (req, res) => {
+    let groupid = req.body.groupid;
+    let photourl = `http://localhost:8181/img/${req.file.filename}`;
+    try {
+      await db.updateOneFieldGroup(groupid, "photourl", photourl);
+      res.send({ photourl });
+    } catch (err) {
+      res.send(500);
+    }
+  }
+);
+
+router.put(
+  "/group/back",
+  upload.single("image"),
+  verifyToken,
+  async (req, res) => {
+    let groupid = req.body.groupid;
+    let photourl = `http://localhost:8181/img/${req.file.filename}`;
+    try {
+      await db.updateOneFieldGroup(groupid, "backgroundurl", photourl);
+      res.send({ photourl });
+    } catch (err) {
+      res.send(500);
+    }
+  }
+);
+
+router.put("/group/name", verifyToken, async (req, res) => {
+  let groupid = req.body.groupid;
+  let name = req.body.name;
+  try {
+    await db.updateOneFieldGroup(groupid, "groupname", name);
+    res.send(200);
+  } catch (err) {
+    res.send(500);
+  }
+});
+
+router.put("/group/description", verifyToken, async (req, res) => {
+  let groupid = req.body.groupid;
+  let description = req.body.description;
+  try {
+    await db.updateOneFieldGroup(groupid, "groupdescription", description);
+    res.send(200);
+  } catch (err) {
     res.send(500);
   }
 });

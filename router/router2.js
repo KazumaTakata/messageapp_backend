@@ -7,8 +7,8 @@ var verifyToken = require("../middleware/verifyToken");
 var multer = require("multer");
 var db = require("../db/database");
 var config = require("../config");
-var elastic = require("../elasticsearch/individualtalk");
-var elasticgroup = require("../elasticsearch/grouptalk");
+var elastic = require("../elasticsearch/individual_talk");
+var elasticgroup = require("../elasticsearch/group_talk");
 var router = express.Router();
 var passport = require("passport");
 
